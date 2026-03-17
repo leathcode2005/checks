@@ -36,35 +36,33 @@
 <style>
 </style>
 
-<script setup>
-import {formatMoney} from '../utilities.ts'
-import { ref, onMounted} from 'vue'
-import { useAppStore } from '../stores/app.ts'
+<script setup lang="ts">
+import { formatMoney } from '../utilities'
+import { ref, onMounted } from 'vue'
+import { useAppStore, type CheckData } from '../stores/app'
 import { useRouter } from 'vue-router'
 
 const state = useAppStore()
 const router = useRouter()
 
-const history = ref([])
+const history = ref<CheckData[]>([])
 
 const loadHistory = () => {
   history.value = JSON.parse(localStorage.getItem('checkList') || '[]')
 }
 
-const deleteItem = (index) => {
+const deleteItem = (index: number) => {
   history.value.splice(index, 1)
   localStorage.setItem('checkList', JSON.stringify(history.value))
 }
 
-const viewItem = (index) => {
+const viewItem = (index: number) => {
     const item = history.value[index]
-    state.check = item
+    state.check = { ...item }
     router.push('/')
 }
 
 onMounted(() => {
   loadHistory()
 })
-
-
 </script>

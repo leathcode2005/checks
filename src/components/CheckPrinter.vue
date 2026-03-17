@@ -13,16 +13,12 @@
                 <div class="amount-box" style="position: absolute; top: 175px; left: 950px">
 
                 </div>
-                <div class="amount-data" style="position: absolute; top: 182px; left: 970px">{{formatMoney(check.amount)}}</div>
+                <div class="amount-data" style="position: absolute; top: 182px; left: 970px">{{ formattedAmount }}</div>
                 <div class="pay-to-data" style="position: absolute; top: 180px; left: 180px">{{check.payTo}}</div>
                 <div class="pay-to" style="position: absolute; top: 170px; left: 60px">
                     Pay to the <br>Order of <span class="payto-line"></span>
                 </div>
-                <div class="amount-line-data" ref="line" style="position: absolute; top: 240px; left: 100px">
-                    ***
-                    {{toWords(check.amount)}} 
-                    ***
-                </div>
+                <div class="amount-line-data" ref="line" style="position: absolute; top: 240px; left: 100px">{{ writtenAmount }}</div>
                 <div class="amount-line" style="position: absolute; top: 250px; left: 60px">
                     <span class="dollar-line"></span>
                 </div>
@@ -121,9 +117,9 @@
 <script setup lang="ts">
 import print from 'print-js';
 import { ToWords } from 'to-words';
-import { ref, reactive, nextTick, watch, onMounted, onUnmounted } from 'vue'
-import { formatMoney } from '../utilities.ts'
-import { useAppStore } from '../stores/app.ts'
+import { ref, reactive, nextTick, watch, onMounted, onUnmounted, computed } from 'vue'
+import { formatMoney } from '../utilities'
+import { useAppStore, type CheckData } from '../stores/app'
 
 const state = useAppStore()
 
@@ -138,12 +134,24 @@ const toWordsTool = new ToWords({
 });
 
 const toWords: (denom: number | string) => string = (denom) => {
+    if (`${denom}`.trim() === '') {
+        return ''
+    }
+
     try {
-        return toWordsTool.convert(Number(denom), );
+        return toWordsTool.convert(Number(denom))
     } catch (e) {
-        return `${e}`;
+        return `${e}`
     }
 }
+
+const formattedAmount = computed(() => formatMoney(check.amount))
+
+const writtenAmount = computed(() => {
+    const amountInWords = toWords(check.amount)
+
+    return amountInWords ? `*** ${amountInWords} ***` : ''
+})
 
 function printCheck () {
     const style = document.createElement('style');
@@ -189,37 +197,36 @@ function printCheck () {
 }
 
 function saveToHistory () {
-    let checkList = JSON.parse(localStorage.getItem('checkList') || '[]')
-    checkList.push(check)
+    let checkList = JSON.parse(localStorage.getItem('checkList') || '[]') as CheckData[]
+    checkList.push({ ...check })
     localStorage.setItem('checkList', JSON.stringify(checkList))
 }
 
-function genNewCheck () {
-    let checkList = JSON.parse(localStorage.getItem('checkList') || '[]')
+function genNewCheck (): CheckData {
+    let checkList = JSON.parse(localStorage.getItem('checkList') || '[]') as CheckData[]
     let recentCheck = checkList[checkList.length - 1]
-    let check = {}
-    check.accountHolderName = recentCheck?.accountHolderName || 'John Smith'
-    check.accountHolderAddress = recentCheck?.accountHolderAddress || '123 Cherry Tree Lane'
-    check.accountHolderCity = recentCheck?.accountHolderCity || 'New York'
-    check.accountHolderState = recentCheck?.accountHolderState || 'NY'
-    check.accountHolderZip = recentCheck?.accountHolderZip || '10001'
-    check.checkNumber = recentCheck?.checkNumber ? (parseInt(recentCheck?.checkNumber) + 1) : '100'
-    check.date = new Date().toLocaleDateString()
-    check.bankName = recentCheck?.bankName || 'Bank Name, INC'
-    check.amount = '0.00'
-    check.payTo = 'Michael Johnson'
-    check.memo = recentCheck?.memo || 'Rent'
-    check.signature = recentCheck?.signature || 'John Smith'
-    check.routingNumber = recentCheck?.routingNumber || '022303659'
-    check.bankAccountNumber = recentCheck?.bankAccountNumber || '000000000000'
-    return check
+
+    return {
+        accountHolderName: recentCheck?.accountHolderName || 'John Smith',
+        accountHolderAddress: recentCheck?.accountHolderAddress || '123 Cherry Tree Lane',
+        accountHolderCity: recentCheck?.accountHolderCity || 'New York',
+        accountHolderState: recentCheck?.accountHolderState || 'NY',
+        accountHolderZip: recentCheck?.accountHolderZip || '10001',
+        checkNumber: recentCheck?.checkNumber ? `${parseInt(recentCheck.checkNumber, 10) + 1}` : '100',
+        date: new Date().toLocaleDateString(),
+        bankName: recentCheck?.bankName || 'Bank Name, INC',
+        amount: '0.00',
+        payTo: 'Michael Johnson',
+        memo: recentCheck?.memo || 'Rent',
+        signature: recentCheck?.signature || 'John Smith',
+        routingNumber: recentCheck?.routingNumber || '022303659',
+        bankAccountNumber: recentCheck?.bankAccountNumber || '000000000000'
+    }
 }
 
-const check = reactive(
-    genNewCheck()
-)
+const check = reactive<CheckData>(genNewCheck())
 
-const line = ref(null)
+const line = ref<HTMLElement | null>(null)
 
 watch(check, async () => {
     await nextTick(() => {
