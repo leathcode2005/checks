@@ -189,6 +189,31 @@ function printCheck () {
         .check-box-print {
           position: relative;
         }
+        .amount-box {
+          border: 1px solid black !important;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+        .amount-box::before {
+          color: black !important;
+        }
+        .payto-line {
+          border-bottom: 1px solid black !important;
+          border-right: 1px solid black !important;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+        .dollar-line {
+          border-bottom: 1px solid black !important;
+          print-color-adjust: exact;
+          -webkit-print-color-adjust: exact;
+        }
+        .memo {
+          color: black !important;
+        }
+        .signature {
+          color: black !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -319,8 +344,10 @@ label {
 .amount-box {
     width: 225px;
     height: 40px;
-    border: 1px solid #c7c7c7;
+    border: 1px solid black;
     background-color: white;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
 }
 .check-box {
     width: 1200px;
@@ -360,6 +387,8 @@ label {
     border-bottom: 1px solid black;
     margin-left: 10px;
     margin-top: 20px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
 }
 .payto-line {
     width: 776px;
@@ -369,5 +398,7 @@ label {
     border-right: 1px solid black;
     height: 28px;
     margin-top: -32px;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
 }
 </style>
