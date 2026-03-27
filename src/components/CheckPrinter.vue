@@ -110,6 +110,20 @@
             <div class="col-12" style="margin-top: 30px;">
                 <button type="button" class="btn btn-primary" @click="saveToHistory">Save to History</button>
             </div>
+            <form class="row g-3" style="margin-top: 30px; border-top: 1px solid #e7e7e7; padding-top: 15px;">
+                <div class="col-md-2">
+                    <label class="form-label">Number of Checks</label>
+                    <input type="number" class="form-control" v-model.number="batchCount" min="1" max="500">
+                </div>
+                <div class="col-md-4" style="display: flex; align-items: flex-end;">
+                    <button type="button" class="btn btn-success" @click="generateSequentialChecks">
+                        Generate {{ batchCount }} Blank Check{{ batchCount === 1 ? '' : 's' }}
+                    </button>
+                </div>
+                <div class="col-md-12">
+                    <small class="text-muted">Generates blank checks starting at check #{{ check.checkNumber }}, saves them to history, and opens the print dialog.</small>
+                </div>
+            </form>
         </div>
     </div>
 </template>
@@ -251,6 +265,8 @@ function genNewCheck (): CheckData {
 
 const check = reactive<CheckData>(genNewCheck())
 
+const batchCount = ref(1)
+
 const line = ref<HTMLElement | null>(null)
 
 watch(check, async () => {
@@ -259,6 +275,125 @@ watch(check, async () => {
         check.lineLength = computedLine
     })
 }, { immediate: true })
+
+function generateSequentialChecks () {
+    const count = Math.max(1, Math.min(500, batchCount.value))
+    const startNum = parseInt(check.checkNumber, 10) || 0
+    const checkList = JSON.parse(localStorage.getItem('checkList') || '[]') as CheckData[]
+
+    const batchChecks: CheckData[] = []
+    for (let i = 0; i < count; i++) {
+        batchChecks.push({
+            accountHolderName: check.accountHolderName,
+            accountHolderAddress: check.accountHolderAddress,
+            accountHolderCity: check.accountHolderCity,
+            accountHolderState: check.accountHolderState,
+            accountHolderZip: check.accountHolderZip,
+            checkNumber: `${startNum + i}`,
+            date: '',
+            bankName: check.bankName,
+            amount: '',
+            payTo: '',
+            memo: '',
+            signature: '',
+            routingNumber: check.routingNumber,
+            bankAccountNumber: check.bankAccountNumber
+        })
+    }
+
+    checkList.push(...batchChecks)
+    localStorage.setItem('checkList', JSON.stringify(checkList))
+
+    // Build a hidden print container with all checks on separate pages
+    const container = document.createElement('div')
+    container.id = 'batch-print-container'
+
+    for (const c of batchChecks) {
+        const page = document.createElement('div')
+        page.className = 'batch-check-page'
+        page.innerHTML = `
+            <div class="check-box" style="position:relative;">
+                <div style="position:relative;">
+                    <div class="account-holder-name" style="position:absolute;top:40px;left:60px">${c.accountHolderName}</div>
+                    <div class="account-holder-address" style="position:absolute;top:70px;left:60px">
+                        ${c.accountHolderAddress}<br>
+                        ${c.accountHolderCity}, ${c.accountHolderState} ${c.accountHolderZip}
+                    </div>
+                    <div class="check-number-human" style="position:absolute;top:40px;left:1060px">${c.checkNumber}</div>
+                    <div class="date-data" style="position:absolute;top:80px;left:850px"></div>
+                    <div class="date" style="position:absolute;top:90px;left:760px">Date: _____________________</div>
+                    <div class="amount-box" style="position:absolute;top:175px;left:950px"></div>
+                    <div class="amount-data" style="position:absolute;top:182px;left:970px"></div>
+                    <div class="pay-to-data" style="position:absolute;top:180px;left:180px"></div>
+                    <div class="pay-to" style="position:absolute;top:170px;left:60px">
+                        Pay to the <br>Order of <span class="payto-line"></span>
+                    </div>
+                    <div class="amount-line-data" style="position:absolute;top:240px;left:100px"></div>
+                    <div class="amount-line" style="position:absolute;top:250px;left:60px">
+                        <span class="dollar-line"></span>
+                    </div>
+                    <div class="bank-name" style="position:absolute;top:300px;left:60px">${c.bankName}</div>
+                    <div class="memo-data" style="position:absolute;top:367px;left:120px"></div>
+                    <div class="memo" style="position:absolute;top:390px;left:60px">
+                        Memo: ____________________________________
+                    </div>
+                    <div class="signature-data" style="position:absolute;top:366px;left:770px"></div>
+                    <div class="signature" style="position:absolute;top:390px;left:750px">
+                        _________________________________________________
+                    </div>
+                    <div class="banking" style="position:absolute;top:420px;left:80px">
+                        <div class="routing" style="display:inline;">a${c.routingNumber}a</div>
+                        <div class="bank-account" style="display:inline;">${c.bankAccountNumber}c</div>
+                        <div class="check-number" style="display:inline;margin-left:20px">${c.checkNumber}</div>
+                    </div>
+                </div>
+            </div>
+        `
+        container.appendChild(page)
+    }
+
+    document.body.appendChild(container)
+
+    const style = document.createElement('style')
+    style.id = 'batch-print-style'
+    style.textContent = `
+      #batch-print-container { display: none; }
+      @media print {
+        body > *:not(#batch-print-container) { display: none !important; }
+        #batch-print-container { display: block !important; }
+        @page { margin: 0; }
+        .batch-check-page {
+          page-break-after: always;
+          width: 100%;
+          position: relative;
+        }
+        .batch-check-page:last-child { page-break-after: auto; }
+        .batch-check-page .check-box {
+          width: 100%;
+          height: 100vh;
+          margin: 0;
+          padding: 0;
+          background: white !important;
+          border: none !important;
+          box-shadow: none !important;
+        }
+        body {
+          transform: scale(1);
+          transform-origin: top center;
+          width: 149%;
+          margin: 0;
+          padding: 0;
+        }
+      }
+    `
+    document.head.appendChild(style)
+    window.print()
+    style.remove()
+    container.remove()
+
+    // Advance check number past the batch
+    check.checkNumber = `${startNum + count}`
+}
 
 function handlePrintShortcut(event: KeyboardEvent) {
     if (event.ctrlKey && event.key === 'p') {
